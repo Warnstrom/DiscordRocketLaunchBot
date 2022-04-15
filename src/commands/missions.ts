@@ -10,14 +10,16 @@ import Command from "../structs/command";
 import { mission } from "../api/nextMissionApi";
 import { NextType } from "../interfaces/next";
 import { helpers } from "../utils/helpers";
+const { SlashCommandBuilder } = require("@discordjs/builders");
 
 export class Missions implements Command {
   readonly interactionComponents: string[] = ["leftTurnPageAction", "rightTurnPageAction"];
   private interaction: CommandInteraction | undefined;
   readonly name = "missions";
   readonly description = "Replies with next seven launches";
-  readonly agencyOption: string | undefined;
-  readonly agencyDescriptionOption: string | undefined;
+  readonly option: boolean | undefined;
+  readonly agencyOption: string | undefined = "agency";
+  readonly agencyDescriptionOption: string = "Enter an agency";
   async execute(
     interaction: CommandInteraction,
     options: Omit<CommandInteractionOptionResolver, "getMessage" | "getFocused">
@@ -33,6 +35,15 @@ export class Missions implements Command {
     const missions = await mission.week(agency);
     const embed = await this.generateEmbed(missions, pageNumber);
     interaction.reply({ embeds: [embed], components: [row] });
+  }
+
+   slashCommand() {
+    return new SlashCommandBuilder()
+    .setName(this.name)
+    .setDescription(this.description)
+    .addStringOption((option: any) =>
+      option.setName(this.agencyOption).setDescription(this.agencyDescriptionOption)
+    );
   }
 
   private generateEmbed = async (

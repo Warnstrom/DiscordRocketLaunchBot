@@ -8,12 +8,15 @@ import Command from "../structs/command";
 import { mission } from "../api/nextMissionApi";
 import { NextType } from "../interfaces/next";
 import { helpers } from "../utils/helpers";
+import { log } from "../utils/logger";
+const { SlashCommandBuilder } = require("@discordjs/builders");
 
 export class Next implements Command {
   private interaction: CommandInteraction | undefined;
   readonly name: string = "next";
-  readonly description: string = "Replies with upcoming launch";
-  readonly agencyOption: string = "agency";
+  readonly description: string | undefined = "Replies with upcoming launch";
+  readonly option: boolean = true;
+  readonly agencyOption: string | undefined = "agency";
   readonly agencyDescriptionOption: string = "Enter an agency";
   async execute(
     interaction: CommandInteraction,
@@ -27,6 +30,15 @@ export class Next implements Command {
     } catch (error) {
       console.error(error);
     }
+  }
+
+  slashCommand() {
+    return new SlashCommandBuilder()
+      .setName(this.name)
+      .setDescription(this.description)
+      .addStringOption((option: any) =>
+        option.setName(this.agencyOption).setDescription(this.agencyDescriptionOption)
+      );
   }
 
   private async sendEmbed(data: NextType) {
@@ -69,6 +81,6 @@ export class Next implements Command {
       )
       .setImage(data.image)
       .setFooter({ text: data.pad?.location.name || "" });
-    await this.interaction?.reply({ embeds: [embed] });
+    this.interaction?.reply({ embeds: [embed] });
   }
 }
