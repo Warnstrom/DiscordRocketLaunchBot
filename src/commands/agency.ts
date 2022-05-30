@@ -17,6 +17,7 @@ export class Agency implements Command {
   readonly option: boolean = true;
   readonly agencyOption: string | undefined = "name";
   readonly agencyDescriptionOption: string = "Enter an agency";
+  readonly disabled: boolean = false;
   async execute(
     interaction: CommandInteraction,
     options: Omit<CommandInteractionOptionResolver<CacheType>, "getMessage" | "getFocused">

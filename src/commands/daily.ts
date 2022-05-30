@@ -11,6 +11,7 @@ export class Daily implements Command {
   readonly option: boolean = false;
   readonly agencyDescriptionOption: string | undefined = undefined;
   readonly agencyOption: string | undefined = undefined;
+  readonly disabled: boolean = false;
   private readonly color = 39423;
   async execute(interaction: CommandInteraction): Promise<void> {
     this.interaction = interaction;

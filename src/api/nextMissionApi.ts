@@ -3,6 +3,7 @@ import { NextType } from "../interfaces/next";
 import { DailyPicture } from "../interfaces/daily";
 import settings from "../settings";
 import { SpaceAgency } from "../interfaces/agency";
+import { log } from "../utils/logger";
 
 const instance = axios.create({
   baseURL: "https://lldev.thespacedevs.com/2.2.0/",
@@ -37,6 +38,7 @@ export const mission = {
         !spaceAgency ? "launch/upcoming/?limit=1&offset=1%22" : "launch/upcoming/?search=" + `${spaceAgency}`
       )
     ).results;
+    log(result)
     if (result.length) {
       return result[0];
     } else {
@@ -53,6 +55,11 @@ export const mission = {
   all: async (spaceAgency: string): Promise<NextType[]> => {
     return (
       await requests.getMission(!spaceAgency ? "launch/upcoming/" : "launch/upcoming/?search=" + `${spaceAgency}`)
+    ).results;
+  },
+  limit: async (spaceAgency?: string, limit?: number): Promise<NextType[]> => {
+    return (
+      await requests.getMission(!spaceAgency ? "launch/upcoming/?limit="+`${limit}` : "launch/upcoming/?search=" + `${spaceAgency}`)
     ).results;
   },
 };

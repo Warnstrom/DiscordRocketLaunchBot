@@ -14,10 +14,11 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 export class Next implements Command {
   private interaction: CommandInteraction | undefined;
   readonly name: string = "next";
-  readonly description: string | undefined = "Replies with upcoming launch";
   readonly option: boolean = true;
-  readonly agencyOption: string | undefined = "agency";
+  readonly description: string = "Replies with upcoming launch";
+  readonly agencyOption: string = "agency";
   readonly agencyDescriptionOption: string = "Enter an agency";
+  readonly disabled: boolean = false;
   async execute(
     interaction: CommandInteraction,
     options: Omit<CommandInteractionOptionResolver, "getMessage" | "getFocused">
