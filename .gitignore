@@ -1,6 +1,7 @@
 settings.ts
 settings.js
 .vs/
+src/utils/mock.ts
 bower_components/
 node_modules/
 dist/

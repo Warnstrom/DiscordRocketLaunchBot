@@ -3,8 +3,7 @@ import { DailyPicture } from '../interfaces/daily';
 import settings from '../settings';
 
 const instance = axios.create({
-	baseURL: `https://api.nasa.gov/`,
-	timeout: 15000,
+	baseURL: `https://api.nasa.gov/`
 });
 
 const responseBody = (response: AxiosResponse) => response.data;

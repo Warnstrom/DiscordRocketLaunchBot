@@ -7,7 +7,6 @@ import { log } from "../utils/logger";
 
 const instance = axios.create({
   baseURL: "https://lldev.thespacedevs.com/2.2.0/",
-  timeout: 15000,
 });
 
 const responseBody = (response: AxiosResponse) => response.data;
