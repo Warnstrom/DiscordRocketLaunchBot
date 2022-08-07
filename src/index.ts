@@ -5,8 +5,8 @@ import * as commandList from "./commands/index";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import { log } from "./utils/logger";
-import { mission } from "./api/nextMissionApi";
 import { API, connectToDatabase } from "./utils/database";
+import { mission } from "./api/nextMissionApi";
 const cron = require("node-cron");
 
 const rest = new REST({ version: "10" }).setToken(settings.CLIENT_TOKEN);
@@ -26,14 +26,14 @@ class Bot extends Client {
       partials: ["MESSAGE", "CHANNEL", "REACTION"],
     });
     connectToDatabase();
-    cron.schedule("*/1 * * * *", async () => {
-      /* const upcomingLaunch = mission.limit("", 50);
-      const result = await API.launch.find();
-     if (result?.length != 0) {
+    cron.schedule("*/3 * * * *", async () => {
+      /*const result = await API.launch.find();
+      if (result?.length === 0) {
+        const upcomingLaunch = mission.limit("", 50);
         upcomingLaunch.then(async (value) => {
           await API.launch.add(value);
         });
-      } else {
+      }  else {
         for (const launches of await upcomingLaunch) {
           await API.launch.delete(launches.id);
           this.addDiscordEvents(launches);
@@ -51,6 +51,7 @@ class Bot extends Client {
     });
     super.on("ready", async (client) => {
       if (client.isReady()) {
+        await this.addDiscordEvents();
         const commandList: any[] = [];
         const commandNames: string[] = Object.keys(commands);
         for (const commandKeys of commandNames) {
@@ -88,41 +89,36 @@ class Bot extends Client {
       console.error(error);
     });
   }
-  private async addDiscordEvents(launches: any) {
+  private async addDiscordEvents(launches?: any) {
     try {
       const guilds = client.guilds.cache.map((guild) => guild);
 
       for (const guild of guilds) {
-        let listOfChannels = guild.channels.cache.map((channels) => {
-          if (channels.name === "launch") {
-            return channels;
-            //return { guildId: channels.guildId, channelId: channels.id };
-          }
-        });
-        /*
-      Delete all events from the event list for each guild
-      guild.scheduledEvents.cache.map((event) => event.delete());
-      */
-        //Add launch events to Discord channels
-        const end_window = new Date(launches.window_end);
-        const start_window = new Date(launches.window_start);
-        log(start_window);
-        const dateCheck = launches.window_end === launches.window_start;
-        /* guild.scheduledEvents.create({
-          name: launches.name,
-          scheduledStartTime: start_window,
-          scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : new Date(launches.window_end),
-          privacyLevel: "GUILD_ONLY",
-          entityType: "EXTERNAL",
-          description: launches.mission?.description,
-          entityMetadata: { location: "here" },
-        });
-        guild.scheduledEvents.cache.map((event) => {
-          guild.scheduledEvents.edit(event, {
-            name: launches.id,
+        //Delete all events from the event list for each guild
+        //guild.scheduledEvents.cache.map((event) => event.delete());
+        if (guild.scheduledEvents.cache.size === 0) {
+          const limit = await API.guild.findGuild(guild.id);
+          const launches = await API.launch.findMany(limit.eventLimit);
+          //Add launch events to Discord channels
+          /*   const end_window = new Date(launches.window_end);
+          const start_window = new Date(launches.window_start);
+          const dateCheck = launches.window_end === launches.window_start;
+          guild.scheduledEvents.create({
+            name: launches.name,
+            scheduledStartTime: start_window,
+            scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : new Date(launches.window_end),
+            privacyLevel: "GUILD_ONLY",
+            entityType: "EXTERNAL",
+            description: launches.mission?.description,
+            entityMetadata: { location: launches.pad.location.name },
           });
-          log(event);
-        });*/
+          guild.scheduledEvents.cache.map((event) => {
+            guild.scheduledEvents.edit(event, {
+              name: launches.id,
+            });
+            log(event);
+          });*/
+        }
       }
     } catch (e) {
       log(e);
