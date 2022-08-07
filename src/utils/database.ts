@@ -30,20 +30,18 @@ export const connectToDatabase = async () => {
   collections.launches = launchesCollection;
 };
 
-export const getGuilds = async () => {
-  try {
-    const guilds: any[] | undefined = await collections.guilds?.find({}).toArray();
-    log(guilds);
-  } catch (e) {
-    error(e);
-  }
-};
 export const API = {
   guild: {
+    getGuilds: async () => {
+      try {
+        const guilds: any[] | undefined = await collections.guilds?.find({}).toArray();
+      } catch (e) {
+        error(e);
+      }
+    },
     findGuild: async (guildId: string) => {
       try {
         const result = await collections.guilds?.findOne({ guildId: guildId });
-        log(result);
         return result;
       } catch (e) {
         error(e);
@@ -52,7 +50,6 @@ export const API = {
     deleteOne: async (guild: Guild) => {
       try {
         const result = await collections.guilds?.deleteOne({ guildId: guild.id });
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -61,7 +58,6 @@ export const API = {
       log(guild);
       try {
         const result = await collections.guilds?.updateMany({ guildId: guild.id }, { $setOnInsert: guild }, { upsert: true });
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -70,7 +66,6 @@ export const API = {
       log(guilds);
       try {
         const result: mongoDB.Document | mongoDB.UpdateResult | undefined = await collections.guilds?.updateMany(guilds, { upsert: true });
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -81,7 +76,6 @@ export const API = {
           { guildId: eventChannel.guildId },
           { $set: { announceChannel: eventChannel.eventChannelId } }
         );
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -92,7 +86,6 @@ export const API = {
           { guildId: eventRole.guildId },
           { $set: { announceRole: eventRole.eventRoleId } }
         );
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -103,7 +96,6 @@ export const API = {
           { guildId: eventLimit.guildId },
           { $set: { eventLimit: eventLimit.limit } }
         );
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -113,7 +105,7 @@ export const API = {
   launch: {
     add: async (launches: any) => {
       try {
-        const result: mongoDB.InsertManyResult<any> | undefined = await collections.launches?.insertMany(launches);
+        await collections.launches?.insertMany(launches);
       } catch (e) {
         error(e);
       }
@@ -121,7 +113,6 @@ export const API = {
     delete: async (launchId: any) => {
       try {
         const result = await collections.launches?.deleteOne({ id: launchId });
-        log(result);
       } catch (e) {
         error(e);
       }
@@ -140,16 +131,22 @@ export const API = {
             })
           )
         );
-        log(result);
       } catch (e) {
         error(e);
       }
     },
     find: async () => {
       try {
-        const listOfLaunches: any[] | undefined = await collections.launches?.find({}).toArray();
-        log(listOfLaunches);
-        return listOfLaunches;
+        return await collections.launches?.find({}).toArray();
+      } catch (e) {
+        error(e);
+      }
+    },
+    findMany: async (launchLimit: number) => {
+      log(launchLimit);
+      try {
+        const result = await collections.launches?.find({}).limit(launchLimit).toArray();
+        log(result);
       } catch (e) {
         error(e);
       }

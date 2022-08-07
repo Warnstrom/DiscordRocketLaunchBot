@@ -36,7 +36,7 @@ export class AddEventLimit implements Command {
     if (limit) {
       const serverId = this.interaction?.guildId;
       API.guild.addEventLimit({ guildId: serverId, limit: parseInt(limit) });
-      await this.interaction?.reply(`Changed the limit to ${limit} launch event(s)`);
+      await this.interaction?.reply(`Changed the max limit to ${limit} launch event(s)`);
     }
   }
 }
