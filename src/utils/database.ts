@@ -4,13 +4,19 @@ import { error, log } from "./logger";
 import { NextType } from "../interfaces/next";
 import { Guild } from "discord.js";
 
-export const collections: { guilds?: mongoDB.Collection<any>; launches?: mongoDB.Collection<any> } = {};
+type GuildType = {
+  guildId: string;
+  announceChannel: string;
+  announceRole: string;
+  eventLimit: number;
+};
 
+export const collections: { guilds?: mongoDB.Collection<any>; launches?: mongoDB.Collection<any> } = {};
+const client: mongoDB.MongoClient = new mongoDB.MongoClient(settings.DATABASE.URL, {
+  serverApi: mongoDB.ServerApiVersion.v1,
+});
 export const connectToDatabase = async () => {
   // Create a new MongoDB client with the connection string from settings.ts
-  const client: mongoDB.MongoClient = new mongoDB.MongoClient(settings.DATABASE.URL, {
-    serverApi: mongoDB.ServerApiVersion.v1,
-  });
 
   // Connect to the cluster
   try {
@@ -18,12 +24,13 @@ export const connectToDatabase = async () => {
     log("Connected to MongoDB");
   } catch (e) {
     error(e);
+    await client.close();
   }
   // Connect to the database with the name specified in settings.ts
   const db = client.db(settings.DATABASE.NAME);
 
   // Connect to the collection with the specific name from settings.ts, found in the database previously specified
-  const guildsCollection = db.collection<any>(settings.DATABASE.GUILDS_COLLECTION_NAME);
+  const guildsCollection = db.collection<GuildType>(settings.DATABASE.GUILDS_COLLECTION_NAME);
   const launchesCollection = db.collection<any>(settings.DATABASE.LAUNCHES_COLLECTION_NAME);
 
   collections.guilds = guildsCollection;
@@ -142,11 +149,11 @@ export const API = {
         error(e);
       }
     },
-    findMany: async (launchLimit: number) => {
-      log(launchLimit);
+    findMany: async (launchLimit: number): Promise<NextType[] | undefined> => {
       try {
-        const result = await collections.launches?.find({}).limit(launchLimit).toArray();
-        log(result);
+        if (collections.launches) {
+          return await collections.launches.find({}).limit(launchLimit).toArray();
+        }
       } catch (e) {
         error(e);
       }

@@ -1,4 +1,5 @@
 import { CommandInteraction, CommandInteractionOptionResolver, MessageEmbed } from "discord.js";
+import client from "..";
 import Command from "../structs/command";
 import { API } from "../utils/database";
 import { log } from "../utils/logger";
@@ -34,9 +35,14 @@ export class AddEventLimit implements Command {
 
   private async send(limit: string | null) {
     if (limit) {
+      //API.guild.addEventLimit({ guildId: serverId, limit: parseInt(limit) });
+      await this.interaction?.reply(`Updated the max limit to ${limit} launch event(s)`);
       const serverId = this.interaction?.guildId;
-      API.guild.addEventLimit({ guildId: serverId, limit: parseInt(limit) });
-      await this.interaction?.reply(`Changed the max limit to ${limit} launch event(s)`);
+      if (serverId) {
+        const guild = client.guilds.cache.get(serverId?.toString());
+        guild?.scheduledEvents.cache.lastKey(4);
+        log(guild?.scheduledEvents.cache.size);
+      }
     }
   }
 }

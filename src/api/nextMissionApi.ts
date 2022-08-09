@@ -6,7 +6,7 @@ import { SpaceAgency } from "../interfaces/agency";
 import { log } from "../utils/logger";
 
 const instance = axios.create({
-  baseURL: "https://lldev.thespacedevs.com/2.2.0/",
+  baseURL: "https://ll.thespacedevs.com/2.2.0/",
 });
 
 const responseBody = (response: AxiosResponse) => response.data;
@@ -58,7 +58,7 @@ export const mission = {
   },
   limit: async (spaceAgency?: string, limit?: number): Promise<NextType[]> => {
     return (
-      await requests.getMission(!spaceAgency ? "launch/upcoming/?limit="+`${limit}` : "launch/upcoming/?search=" + `${spaceAgency}`)
+      await requests.getMission(!spaceAgency ? "launch/upcoming/?limit="+`${limit}&mode=detailed` : "launch/upcoming/?search=" + `${spaceAgency}&mode=detailed`)
     ).results;
   },
 };
