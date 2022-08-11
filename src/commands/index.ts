@@ -2,8 +2,8 @@ import { Next } from './next';
 import { Daily } from './daily';
 import { Missions } from './missions';
 import { Agency } from './agency';
-import { AddEventChannel } from './addEventChannel';
-import { AddEventRole } from './addEventRole';
-import { AddEventLimit } from './addEventLimit';
+import { SetEventChannel } from './setEventChannel';
+import { SetEventRole } from './setEventRole';
+import { SetEventLimit } from './setEventLimit';
 
-export { Next, Daily, Missions, Agency, AddEventChannel, AddEventRole, AddEventLimit };
+export { Next, Daily, Missions, Agency, SetEventChannel, SetEventRole, SetEventLimit };

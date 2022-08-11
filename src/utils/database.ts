@@ -30,7 +30,7 @@ export const connectToDatabase = async () => {
   const db = client.db(settings.DATABASE.NAME);
 
   // Connect to the collection with the specific name from settings.ts, found in the database previously specified
-  const guildsCollection = db.collection<GuildType>(settings.DATABASE.GUILDS_COLLECTION_NAME);
+  const guildsCollection = db.collection<any>(settings.DATABASE.GUILDS_COLLECTION_NAME);
   const launchesCollection = db.collection<any>(settings.DATABASE.LAUNCHES_COLLECTION_NAME);
 
   collections.guilds = guildsCollection;
@@ -142,9 +142,13 @@ export const API = {
         error(e);
       }
     },
-    find: async () => {
+    find: async (filter?: any) => {
       try {
-        return await collections.launches?.find({}).toArray();
+        if (filter) {
+          return collections.launches?.find({ "status.abbrev": { $ne: filter } }).toArray();
+        } else {
+          return collections.launches?.find({}).toArray();
+        }
       } catch (e) {
         error(e);
       }

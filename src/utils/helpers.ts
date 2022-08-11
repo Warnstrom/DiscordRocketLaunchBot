@@ -5,8 +5,7 @@ enum colors {
 }
 
 export class helpers {
-  static readonly imageUrl =
-    "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/mozilla/36/rocket_1f680.png";
+  static readonly imageUrl = "https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/120/mozilla/36/rocket_1f680.png";
 
   static getColor(status: string | undefined): number {
     switch (status) {
@@ -21,5 +20,11 @@ export class helpers {
 
   static addZero(i: number): string {
     return i < 10 ? "0" + i.toString() : i.toString();
+  }
+
+  static launchWindowExpired(date: Date): boolean {
+    const now = new Date();
+    const hasExpired = date < now;
+    return hasExpired;
   }
 }

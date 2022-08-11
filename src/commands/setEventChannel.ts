@@ -6,10 +6,10 @@ import { log } from "../utils/logger";
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
-export class AddEventChannel implements Command {
+export class SetEventChannel implements Command {
   private interaction: CommandInteraction | undefined;
-  readonly name = "addeventchannel";
-  readonly description = "Add a channel to announce launch events in";
+  readonly name = "seteventchannel";
+  readonly description = "Set a channel to announce launch events in";
   readonly option: boolean = false;
   readonly agencyOption: string = "channel";
   readonly agencyDescriptionOption: string = "Enter a channel where you want your launch announcement";

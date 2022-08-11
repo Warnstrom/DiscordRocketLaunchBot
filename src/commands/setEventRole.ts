@@ -1,4 +1,4 @@
-import { CommandInteraction, CommandInteractionOptionResolver, MessageEmbed } from "discord.js";
+import { CommandInteraction, CommandInteractionOptionResolver, Role } from "discord.js";
 import client from "..";
 import Command from "../structs/command";
 import { API } from "../utils/database";
@@ -6,23 +6,24 @@ import { log } from "../utils/logger";
 
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
-export class AddEventLimit implements Command {
+export class SetEventRole implements Command {
   private interaction: CommandInteraction | undefined;
-  readonly name = "addeventlimit";
-  readonly description = "Add a limit to how many events you want (max 50)";
+  readonly name = "seteventrole";
+  readonly description = "Set a role to be tagged for a launch event";
   readonly option: boolean = false;
-  readonly agencyOption: string = "limit";
-  readonly agencyDescriptionOption: string = "Enter a limit to how many events you want (max 50)";
+  readonly agencyOption: string = "role";
+  readonly agencyDescriptionOption: string = "Enter a role";
   readonly disabled: boolean = false;
   readonly admin: boolean = true;
   private readonly color = 39423;
   async execute(interaction: CommandInteraction, options: Omit<CommandInteractionOptionResolver, "getMessage" | "getFocused">): Promise<void> {
     if (interaction.memberPermissions?.has("ADMINISTRATOR")) {
-      const limit: string | null = options.getString("limit");
+      const role: string | null = options.getString("role");
+
       this.interaction = interaction;
-      this.send(limit);
+      this.send(role);
     } else {
-      this.interaction?.reply("You don't have the permission to use this command");
+      await this.interaction?.reply("You don't have the permission to use this command");
     }
   }
 
@@ -33,15 +34,19 @@ export class AddEventLimit implements Command {
       .addStringOption((option: any) => option.setName(this.agencyOption).setDescription(this.agencyDescriptionOption));
   }
 
-  private async send(limit: string | null) {
-    if (limit) {
-      //API.guild.addEventLimit({ guildId: serverId, limit: parseInt(limit) });
-      await this.interaction?.reply(`Updated the max limit to ${limit} launch event(s)`);
+  private async send(role: string | null) {
+    if (this.interaction && role) {
       const serverId = this.interaction?.guildId;
+      let checkedRoleId: Role | undefined;
       if (serverId) {
         const guild = client.guilds.cache.get(serverId?.toString());
-        guild?.scheduledEvents.cache.lastKey(4);
-        log(guild?.scheduledEvents.cache.size);
+        checkedRoleId = guild?.roles.cache.get(role.toString().slice(3, 21));
+      }
+      if (checkedRoleId) {
+        API.guild.addEventRole({ guildId: serverId, eventRoleId: role });
+        await this.interaction.reply(`Added ${role} as an event role`);
+      } else {
+        await this.interaction.reply(`Found no role called: ${role}`);
       }
     }
   }

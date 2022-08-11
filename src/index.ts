@@ -4,21 +4,24 @@ import Command from "./structs/command";
 import * as commandList from "./commands/index";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
-import { error, log } from "./utils/logger";
 import { API, connectToDatabase } from "./utils/database";
 import { mission } from "./api/nextMissionApi";
 import { NextType } from "./interfaces/next";
+import { helpers } from "./utils/helpers";
+import { events } from "./utils/event";
+import { log } from "./utils/logger";
+import instadate from "instadate";
 const cron = require("node-cron");
 
 const rest = new REST({ version: "10" }).setToken(settings.CLIENT_TOKEN);
-export const commands: { [key: string]: typeof Command } = {
+const commands: { [key: string]: typeof Command } = {
   next: commandList.Next,
   daily: commandList.Daily,
   missions: commandList.Missions,
   agency: commandList.Agency,
-  addeventchannel: commandList.AddEventChannel,
-  addeventrole: commandList.AddEventRole,
-  addeventlimit: commandList.AddEventLimit,
+  seteventchannel: commandList.SetEventChannel,
+  seteventrole: commandList.SetEventRole,
+  seteventlimit: commandList.SetEventLimit,
 };
 class Bot extends Client {
   constructor() {
@@ -28,7 +31,7 @@ class Bot extends Client {
     });
     connectToDatabase();
     this.fillDatabase();
-    cron.schedule("*/10 * * * *", async () => {
+    cron.schedule("*/5 * * * *", async () => {
       const result = await API.launch.find();
       const upcomingLaunch = mission.limit("", 50);
       if (result?.length === 0) {
@@ -44,11 +47,22 @@ class Bot extends Client {
           upcomingLaunch.then(async (value) => {
             await API.launch.add(value);
             log("Added launches", value.length);
-            //await this.editLaunchEvents();
-            log("Updated channel launch events");
           });
         }
       }
+      const guilds = client.guilds.cache.map((guild) => guild);
+      guilds.map((guild) => {
+        guild.scheduledEvents.cache.map((events) => {
+          log(events.scheduledStartAt, new Date(), instadate.differenceInHours(events.scheduledStartAt, new Date()));
+          if (instadate.differenceInMinutes(events.scheduledStartAt, new Date()) <= 60) {
+            API.guild.findGuild(events.guildId).then((guild) => {
+              const channel = guild.announceChannel;
+              const role = guild.announceRole;
+              log(channel, role)
+            });
+          }
+        });
+      });
     });
   }
   public start(): void {
@@ -61,8 +75,7 @@ class Bot extends Client {
     });
     super.on("ready", async (client) => {
       if (client.isReady()) {
-        await this.addLaunchEvents();
-        this.editLaunchEvents();
+        //events.deleteAll();
         const commandList: any[] = [];
         const commandNames: string[] = Object.keys(commands);
         for (const commandKeys of commandNames) {
@@ -78,7 +91,6 @@ class Bot extends Client {
           rest.put(Routes.applicationCommands(settings.CLIENT_ID), {
             body: commandList,
           });
-
           log("Successfully reloaded application (/) commands.");
         } catch (error: any) {
           error(error);
@@ -107,106 +119,6 @@ class Bot extends Client {
       await mission.limit("", 50).then(async (value) => {
         await API.launch.add(value);
       });
-    }
-  }
-
-  private async editLaunchEvents() {
-    try {
-      const guilds = client.guilds.cache.map((guild) => guild);
-      for (const guild of guilds) {
-        if (guild.scheduledEvents.cache.size != 0) {
-          const limit = await API.guild.findGuild(guild.id);
-          const limitedLaunches: NextType[] | undefined = await API.launch.findMany(limit.eventLimit);
-          //Add launch events to Discord channels
-          limitedLaunches?.map((launch) => {
-            //log(launch.name, guild.id);
-            const end_window = new Date(launch.window_end);
-            const start_window = new Date(launch.window_start);
-            const dateCheck = launch.window_end === launch.window_start;
-            const getStatus = (launch: any): any => {
-              switch (launch.status.abbrev) {
-                case "Success" || "Failure":
-                  return "COMPLETED";
-                case "TBD" || "TBC":
-                  return "SCHEDULED";
-                case "Go":
-                  return "SCHEDULED";
-              }
-            };
-            log(guild.scheduledEvents.cache.values().next().value);
-          });
-          guild.scheduledEvents.cache.map((event) => {
-            //log(event.name, guild.id);
-            /*guild.scheduledEvents.edit(event, {
-                name: launch.id,
-                scheduledStartTime: start_window,
-                scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : new Date(launch.window_end),
-                status: getStatus(launch),
-                entityMetadata: { location: launch.webcast_live ? launch.vidURLs[0].url : "No stream yet" },
-              });*/
-          });
-          if (limitedLaunches) {
-            for (const launch of limitedLaunches) {
-              const end_window = new Date(launch.window_end);
-              const start_window = new Date(launch.window_start);
-              const dateCheck = launch.window_end === launch.window_start;
-              const getStatus = (launch: any): any => {
-                switch (launch.status.abbrev) {
-                  case "Success" || "Failure":
-                    return "COMPLETED";
-                  case "TBD" || "TBC":
-                    return "SCHEDULED";
-                  case "Go":
-                    return "SCHEDULED";
-                }
-              };
-            }
-          } else {
-            log("Didn't find any launches");
-          }
-        }
-      }
-    } catch (error: any) {
-      error(error);
-    }
-  }
-
-  private async addLaunchEvents() {
-    try {
-      const guilds = client.guilds.cache.map((guild) => guild);
-      for (const guild of guilds) {
-        //guild.scheduledEvents.cache.map((event) => event.delete());
-        const guilds = await API.guild.findGuild(guild.id);
-        log(guild.scheduledEvents.cache.size, guilds.eventLimit);
-        if (guild.scheduledEvents.cache.size === 0 && guilds.eventLimit != 0) {
-          const launches: NextType[] | undefined = await API.launch.findMany(guilds.eventLimit);
-          //Add launch events to Discord channels
-          if (launches) {
-            for (const launch of launches) {
-              const end_window = new Date(launch.window_end);
-              const start_window = new Date(launch.window_start);
-              const dateCheck = launch.window_end === launch.window_start;
-              guild.scheduledEvents.create({
-                name: launch.name,
-                scheduledStartTime: start_window,
-                image: launch.image,
-                scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : new Date(launch.window_end),
-                privacyLevel: "GUILD_ONLY",
-                entityType: "EXTERNAL",
-                description: launch.mission?.description,
-                entityMetadata: { location: launch.webcast_live ? launch.vidURLs[0].url : "No stream yet" },
-              });
-            }
-          } else {
-            log("Didn't find any launches");
-          }
-        } else if (guilds.eventLimit === 0) {
-          //Delete all events from the event list for each guild
-          guild.scheduledEvents.cache.map((event) => event.delete());
-        }
-      }
-    } catch (e: any) {
-      error(e);
     }
   }
 
