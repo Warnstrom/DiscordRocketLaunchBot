@@ -43,12 +43,12 @@ export class Next implements Command {
   }
 
   private async sendEmbed(data: NextType) {
-    const launchDate: number = Math.floor(new Date(data.window_start).getTime() / 1000);
+    const launchDate: number = Math.floor(new Date(data.net).getTime() / 1000);
     const embed: MessageEmbed = new MessageEmbed()
       .setColor(helpers.getColor(data.status?.abbrev))
-      .setThumbnail(helpers.imageUrl)
-      .setTitle(data.name)
-      .setURL(data.infographic || data.image)
+      .setThumbnail(data.launch_service_provider?.info_url ? data.launch_service_provider?.info_url : helpers.imageUrl)
+      .setTitle(data.name || "")
+      .setURL(data.infographic || data.image || "")
       .setAuthor({ name: data.launch_service_provider?.name || "Unknown" })
       .addFields(
         {
@@ -79,8 +79,13 @@ export class Next implements Command {
           name: "Launch status",
           value: data.status?.name || "",
         }
+        ,
+        {
+          name: "Live stream",
+          value: data.webcast_live ? data.vidURLs[0].url : "No stream yet",
+        }
       )
-      .setImage(data.image)
+      .setImage(data.image || "")
       .setFooter({ text: data.pad?.location.name || "" });
     this.interaction?.reply({ embeds: [embed] });
   }

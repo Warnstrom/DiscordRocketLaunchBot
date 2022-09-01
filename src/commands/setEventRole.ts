@@ -41,6 +41,7 @@ export class SetEventRole implements Command {
       if (serverId) {
         const guild = client.guilds.cache.get(serverId?.toString());
         checkedRoleId = guild?.roles.cache.get(role.toString().slice(3, 21));
+        log(checkedRoleId)
       }
       if (checkedRoleId) {
         API.guild.addEventRole({ guildId: serverId, eventRoleId: role });

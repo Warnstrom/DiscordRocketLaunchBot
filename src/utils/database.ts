@@ -97,7 +97,7 @@ export const API = {
         error(e);
       }
     },
-    addEventLimit: async (eventLimit: any) => {
+    addEventLimit: async (eventLimit: {guildId: string, limit: number}) => {
       try {
         const result: Promise<mongoDB.UpdateResult> | undefined = collections.guilds?.updateOne(
           { guildId: eventLimit.guildId },

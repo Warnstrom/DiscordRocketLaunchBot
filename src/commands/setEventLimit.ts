@@ -39,8 +39,16 @@ export class SetEventLimit implements Command {
       if (limit < 50 && limit > 0) {
         const serverId = this.interaction?.guildId;
         if (serverId) {
-          API.guild.addEventLimit({ guildId: serverId, limit: limit });
-          events.add(limit, serverId);
+          API.guild.findGuild(serverId).then(async (guild) => {
+            API.guild.addEventLimit({ guildId: serverId, limit: limit });
+            if (guild.eventLimit < limit) {
+              log("edfgfdgbhsfghsrtgh");
+              events.add(limit, serverId);
+            } else {
+              log("asdasdasdasdasd");
+              await events.deleteLimit(limit, serverId);
+            }
+          });
           await this.interaction?.reply(`Updated the max limit to ${limit} launch event(s)`);
         }
       } else {

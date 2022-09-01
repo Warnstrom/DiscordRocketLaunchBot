@@ -6,57 +6,33 @@ import { error, log } from "./logger";
 
 export const events = {
   add: async (limit?: number, guildId?: string) => {
-    try {
-      if (guildId) {
-        const guilds = client.guilds.cache.get(guildId);
-        const launches: NextType[] | undefined = await API.launch.find("Success");
-        if (guilds && launches && limit) {
-          //Add launch events to Discord channels
-          if ((await guilds.scheduledEvents.fetch()).size === 0 && limit != 0) {
-            let i;
-            for (i = 0; i < limit; i++) {
-              const end_window = new Date(launches[i].window_end);
-              const dateCheck = launches[i].window_end === launches[i].net;
-              guilds.scheduledEvents.create({
-                name: launches[i].name,
-                image: launches[i].image,
-                scheduledStartTime: launches[i].net,
-                scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : end_window,
-                privacyLevel: "GUILD_ONLY",
-                entityType: "EXTERNAL",
-                description: launches[i].mission?.description,
-                entityMetadata: { location: launches[i].webcast_live ? launches[i].vidURLs[0].url : "No stream yet" },
-              });
-              //(await event).scheduledStartTimestamp = new Date(launches[i].net).getTime();
-            }
-          } else if ((await guilds.scheduledEvents.fetch()).size < limit) {
-            log("Nehe")
-            let i;
-            for (i = (await guilds.scheduledEvents.fetch()).size; i < limit; i++) {
-              const end_window = new Date(launches[i].window_end);
-              const dateCheck = launches[i].window_end === launches[i].net;
-              guilds.scheduledEvents.create({
-                name: launches[i].name,
-                image: launches[i].image,
-                scheduledStartTime: launches[i].net,
-                scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : end_window,
-                privacyLevel: "GUILD_ONLY",
-                entityType: "EXTERNAL",
-                description: launches[i].mission?.description,
-                entityMetadata: { location: launches[i].webcast_live ? launches[i].vidURLs[0].url : "No stream yet" },
-              });
-              //(await event).scheduledStartTimestamp = new Date(launches[i].net).getTime();
-            }
-          } else if ((await guilds.scheduledEvents.fetch()).size > limit) {
-            log("Jaha")
-            events.deleteLimit(limit);
-          } else {
-            log("Fuck you")
+    if (guildId) {
+      const guilds = client.guilds.cache.get(guildId);
+      const launches: NextType[] | undefined = await API.launch.find("Success");
+      if (guilds && launches && limit) {
+        //Add launch events to Discord channels
+        if ((await guilds.scheduledEvents.fetch()).size > limit) {
+          log("Jaha");
+          events.deleteLimit(limit, guilds.id);
+        } else {
+          let eventAmount = guilds?.scheduledEvents.cache.size;
+          let t = limit - eventAmount;
+          for (let i = 0; i < t; i++) {
+            const end_window = new Date(launches[i].window_end);
+            const dateCheck = launches[i].window_end === launches[i].net;
+            guilds.scheduledEvents.create({
+              name: launches[i].name,
+              image: launches[i].image,
+              scheduledStartTime: launches[i].net,
+              scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : end_window,
+              privacyLevel: "GUILD_ONLY",
+              entityType: "EXTERNAL",
+              description: launches[i].mission?.description,
+              entityMetadata: { location: launches[i].webcast_live ? launches[i].vidURLs[0].url : "No stream yet" },
+            });
           }
         }
       }
-    } catch (e: any) {
-      error(e);
     }
   },
   update: async () => {
@@ -93,23 +69,24 @@ export const events = {
       error(error);
     }
   },
-  deleteLimit: async (limit?: number, guildId?: string) => {
-    log(guildId, limit)
-    if (guildId && limit) {
-      try {
-        log(guildId, limit)
-        const guilds = client.guilds.cache.get(guildId);
-        let i;
-        for (i = 0; i < limit; i++) {
-          let lastKey = guilds?.scheduledEvents.cache.lastKey();
-          log(await guilds?.scheduledEvents.fetch(lastKey));
+  deleteLimit: async (limit: number, guildId: string) => {
+    try {
+      const guilds = client.guilds.cache.get(guildId);
+      let eventAmount = guilds?.scheduledEvents.cache.size;
+      if (eventAmount) {
+        const t = eventAmount - limit;
+        log(t, eventAmount, limit);
+        for (let i = 0; i < t; i++) {
+          let lastKey = (await guilds?.scheduledEvents.fetch())?.lastKey();
+          log(lastKey);
           if (lastKey) {
             (await guilds?.scheduledEvents.fetch(lastKey))?.delete();
           }
         }
-      } catch (e: any) {
-        error(e);
+        log("Done");
       }
+    } catch (e: any) {
+      error(e);
     }
   },
   deleteAll: async () => {
@@ -121,6 +98,14 @@ export const events = {
         }
     } catch (e: any) {
       error(e);
+    }
+  },
+
+  deleteAllInGuild: async (guildId: string) => {
+    const guilds = client.guilds.cache.get(guildId);
+
+    if (guilds) {
+      guilds.scheduledEvents.cache.map((event) => event.delete());
     }
   },
 };

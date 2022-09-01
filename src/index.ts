@@ -27,14 +27,14 @@ class Bot extends Client {
   constructor() {
     super({
       intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
-      partials: ["MESSAGE", "CHANNEL", "REACTION"],
+      partials: ["MESSAGE", "CHANNEL"],
     });
     connectToDatabase();
-    this.fillDatabase();
     cron.schedule("*/5 * * * *", async () => {
       const result = await API.launch.find();
       const upcomingLaunch = mission.limit("", 50);
       if (result?.length === 0) {
+        // if the database has no launches, fill it
         upcomingLaunch.then(async (value) => {
           await API.launch.add(value);
         });
@@ -51,14 +51,17 @@ class Bot extends Client {
         }
       }
       const guilds = client.guilds.cache.map((guild) => guild);
-      guilds.map((guild) => {
-        guild.scheduledEvents.cache.map((events) => {
-          log(events.scheduledStartAt, new Date(), instadate.differenceInHours(events.scheduledStartAt, new Date()));
-          if (instadate.differenceInMinutes(events.scheduledStartAt, new Date()) <= 60) {
-            API.guild.findGuild(events.guildId).then((guild) => {
-              const channel = guild.announceChannel;
-              const role = guild.announceRole;
-              log(channel, role)
+      guilds.map(async (guild) => {
+        guild.scheduledEvents.cache.map((event) => {
+          log(event.scheduledStartAt, new Date(), instadate.differenceInHours(new Date(), event.scheduledStartAt));
+          const anHourTimeDifference = instadate.differenceInMinutes(new Date(), event.scheduledStartAt);
+          if (anHourTimeDifference <= 60 && anHourTimeDifference >= 0) {
+            API.guild.findGuild(event.guildId).then((guild) => {
+              if (guild) {
+                const channel = guild.announceChannel;
+                const role = guild.announceRole;
+                log(channel, role);
+              }
             });
           }
         });
@@ -115,8 +118,8 @@ class Bot extends Client {
 
   private async fillDatabase() {
     const result = await API.launch.find();
-    if (result?.length === 0) {
-      await mission.limit("", 50).then(async (value) => {
+    if (!result || result?.length === 0) {
+      mission.limit("", 50).then(async (value) => {
         await API.launch.add(value);
       });
     }
