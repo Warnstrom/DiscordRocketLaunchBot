@@ -88,55 +88,91 @@ class Bot extends Client {
       });
     });
   }
-  public start(): void {
-    super.login(settings.CLIENT_TOKEN);
-    super.on("guildCreate", async (guild) => {
-      await API.guild.insert({ guildId: guild.id, announceChannel: null, announceRole: null, eventLimit: 0 });
-    });
-    super.on("guildDelete", async (guild) => {
-      await API.guild.delete(guild);
-    });
-    super.on("ready", async (client) => {
-      if (client.isReady()) {
-        //events.deleteAll();
+  public async start(): Promise<void> {
+    try {
+      await super.login(settings.CLIENT_TOKEN);
+  
+      super.on("guildCreate", this.onGuildCreate);
+      super.on("guildDelete", this.onGuildDelete);
+      super.on("ready", this.onReady);
+      super.on("interactionCreate", this.onInteractionCreate);
+      super.on("error", this.onError);
+  
+      log("Bot is now online and ready.");
+    } catch (error) {
+      console.error("An error occurred during bot startup:", error);
+    }
+  }
+  
+  private onGuildCreate = async (guild: Guild): Promise<void> => {
+    await API.guild.insert({ guildId: guild.id, announceChannel: null, announceRole: null, eventLimit: 0 });
+  };
+  
+  private onGuildDelete = async (guild: Guild): Promise<void> => {
+    await API.guild.delete(guild);
+  };
+  
+  private onReady = async (): Promise<void> => {
+    try {
+      if (this.isReady()) {
         const commandList: any[] = [];
         const commandNames: string[] = Object.keys(commands);
-        for (const commandKeys of commandNames) {
-          const command: Command = new commands[commandKeys]();
+  
+        for (const commandKey of commandNames) {
+          const command: Command = new commands[commandKey]();
           if (!command.disabled) {
-            const SlashCommand = command.slashCommand();
-            commandList.push(SlashCommand);
+            const slashCommand = command.slashCommand();
+            commandList.push(slashCommand);
           }
         }
-        try {
-          log("Started refreshing application (/) commands.");
-          //Routes.applicationGuildCommands(settings.CLIENT_ID, settings.GUILD_ID
-          rest.put(Routes.applicationCommands(settings.CLIENT_ID), {
-            body: commandList,
-          });
-          log("Successfully reloaded application (/) commands.");
-        } catch (error: any) {
-          error(error);
-        }
+  
+        log("Started refreshing application (/) commands.");
+  
+        await rest.put(Routes.applicationCommands(settings.CLIENT_ID), {
+          body: commandList,
+        });
+  
+        log("Successfully reloaded application (/) commands.");
       }
-    });
-    super.on("interactionCreate", async (interaction: Interaction): Promise<void> => {
-      if (!interaction.isCommand() && !interaction.isButton()) {
-        throw new Error("No interaction found");
-      }
+    } catch (error: any) {
+      console.error("An error occurred during command reload:", error);
+    }
+  };
+  
+  private onInteractionCreate = async (interaction: Interaction): Promise<void> => {
+    try {
       if (interaction.isCommand()) {
-        this.onCommandInteraction(interaction);
+        await this.onCommandInteraction(interaction);
+      } else if (interaction.isButton()) {
+        await this.onButtonInteraction(interaction);
+      } else {
+        throw new Error("Unsupported interaction type.");
       }
-      if (interaction.isButton()) {
-        this.onButtonInteraction(interaction);
-      }
-    });
-    super.on("error", (error: Error): void => {
-      console.error(error);
-    });
+    } catch (error: any) {
+      console.error("An error occurred during interaction processing:", error);
+    }
+  };
+  
+  private onError = (error: Error): void => {
+    console.error("An error occurred:", error);
   }
-
-  //Update launches in database with newer data
+  
+  private async onButtonInteraction(interaction: ButtonInteraction): Promise<void> {
+    const { customId } = interaction;
+    const commandName = customId.split("-")[0];
+    const c: typeof Command = commands[commandName];
+    if (c) {
+      new c().update!(customId);
+    }
+  }
+  
+  private async onCommandInteraction(interaction: CommandInteraction): Promise<void> {
+    const { commandName, options } = interaction;
+    const c: typeof Command = commands[commandName];
+    if (c) {
+      await new c().execute(interaction, options);
+    }
+  }
   private async updateLaunches() {
     const result: any[] | undefined = await API.launch.find();
     const upcomingLaunch: Promise<NextType[]> = mission.limit("", 50);
@@ -156,24 +192,7 @@ class Bot extends Client {
       }
     }
   }
-
-  private async onButtonInteraction(interaction: ButtonInteraction): Promise<void> {
-    const { customId } = interaction;
-    const commandName = customId.split("-")[0];
-    const c: typeof Command = commands[commandName];
-    if (c) {
-      new c().update!(customId);
-    }
   }
-
-  private async onCommandInteraction(interaction: CommandInteraction): Promise<void> {
-    const { commandName, options } = interaction;
-    const c: typeof Command = commands[commandName];
-    if (c) {
-      await new c().execute(interaction, options);
-    }
-  }
-}
 
 const client: Bot = new Bot();
 client.start();
