@@ -8,13 +8,16 @@ export const events = {
   add: async (limit?: number, guildId?: string) => {
     if (guildId) {
       const guilds = client.guilds.cache.get(guildId);
+      const guild = await API.guild.findOne(guildId);
       const launches: NextType[] | undefined = await API.launch.find("Success");
       if (guilds && launches && limit) {
         //Add launch events to Discord channels
+        log((await guilds.scheduledEvents.fetch()).size, limit);
         if ((await guilds.scheduledEvents.fetch()).size > limit) {
-          log("Jaha");
+          log("Obliterated");
           events.deleteLimit(limit, guilds.id);
         } else {
+          log("Appended launch");
           let eventAmount = guilds?.scheduledEvents.cache.size;
           let t = limit - eventAmount;
           for (let i = 0; i < t; i++) {
@@ -27,8 +30,9 @@ export const events = {
               scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : end_window,
               privacyLevel: "GUILD_ONLY",
               entityType: "EXTERNAL",
+              channel: guild?.announceChannel,
               description: launches[i].mission?.description,
-              entityMetadata: { location: launches[i].webcast_live ? launches[i].vidURLs[0].url : "No stream yet" },
+              entityMetadata: { location: launches[i].webcast_live || launches[i].vidURLs.length != 0 ? launches[i].vidURLs[0].url : "No stream yet" },
             });
           }
         }
@@ -40,28 +44,28 @@ export const events = {
       const guilds = client.guilds.cache.map((guild) => guild);
       for (const guild of guilds) {
         if (guild.scheduledEvents.cache.size != 0) {
-          const limit = await API.guild.findGuild(guild.id);
-          const limitedLaunches: NextType[] | undefined = await API.launch.findMany(limit.eventLimit);
-          //Add launch events to Discord channels
-          if (limitedLaunches) {
-            for (const launch of limitedLaunches) {
-              const end_window = new Date(launch.window_end);
-              const start_window = new Date(launch.window_start);
-              const dateCheck = launch.window_end === launch.window_start;
-              guild.scheduledEvents.cache.map((event) => {
-                log(new Date(launch.net).getTime() - new Date().getTime());
-                if (event.name === launch.name) {
-                  guild.scheduledEvents.edit(event, {
-                    scheduledStartTime: start_window,
-                    scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : end_window,
-                    status: undefined,
-                    entityMetadata: { location: launch.webcast_live ? launch.vidURLs[0].url : "No stream yet" },
-                  });
-                }
-              });
+          const limit = await API.guild.findOne(guild.id);
+          if (limit) {
+            const limitedLaunches: NextType[] | undefined = await API.launch.find(limit.eventLimit);
+            //Add launch events to Discord channels
+            if (limitedLaunches) {
+              for (const launch of limitedLaunches) {
+                const end_window = new Date(launch.window_end);
+                const start_window = new Date(launch.window_start);
+                const dateCheck = launch.window_end === launch.window_start;
+                guild.scheduledEvents.cache.map((event) => {
+                  log(new Date(launch.net).getTime() - new Date().getTime());
+                  if (event.name === launch.name) {
+                    guild.scheduledEvents.edit(event, {
+                      scheduledStartTime: start_window,
+                      scheduledEndTime: dateCheck ? end_window.setDate(end_window.getDate() + 1) : end_window,
+                      status: undefined,
+                      entityMetadata: { location: launch.webcast_live ? launch.vidURLs[0].url : "No stream yet" },
+                    });
+                  }
+                });
+              }
             }
-          } else {
-            log("Didn't find any launches");
           }
         }
       }

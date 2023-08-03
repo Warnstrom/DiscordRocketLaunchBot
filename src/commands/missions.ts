@@ -16,7 +16,6 @@ const { SlashCommandBuilder } = require("@discordjs/builders");
 const missionData = (agency: string | null) => {
   return mission.week(agency);
 };
-
 export class Missions implements Command {
   private interaction: CommandInteraction | undefined;
   private missionData: Promise<NextType[]> | undefined;

@@ -16,7 +16,11 @@ export class SetEventLimit implements Command {
   readonly disabled: boolean = false;
   readonly admin: boolean = true;
   private readonly color = 39423;
-  async execute(interaction: CommandInteraction, options: Omit<CommandInteractionOptionResolver, "getMessage" | "getFocused">): Promise<void> {
+  async execute(
+    interaction: CommandInteraction,
+    options: Omit<CommandInteractionOptionResolver, "getMessage" | "getFocused">,
+    channel: string
+  ): Promise<void> {
     if (interaction.memberPermissions?.has("ADMINISTRATOR")) {
       const limit: string | null = options.getString("limit");
       this.interaction = interaction;
@@ -36,23 +40,29 @@ export class SetEventLimit implements Command {
   private async send(eventLimit: string | null) {
     if (eventLimit != null) {
       const limit = parseInt(eventLimit);
-      if (limit < 50 && limit > 0) {
+      if (limit < 50 && limit >= 0) {
         const serverId = this.interaction?.guildId;
         if (serverId) {
-          API.guild.findGuild(serverId).then(async (guild) => {
-            API.guild.addEventLimit({ guildId: serverId, limit: limit });
-            if (guild.eventLimit < limit) {
-              log("edfgfdgbhsfghsrtgh");
-              events.add(limit, serverId);
-            } else {
-              log("asdasdasdasdasd");
-              await events.deleteLimit(limit, serverId);
-            }
-          });
-          await this.interaction?.reply(`Updated the max limit to ${limit} launch event(s)`);
+          API.guild
+            .findOne(serverId)
+            .then(async (guild) => {
+              if (guild) {
+                if (guild.eventLimit < limit) {
+                  log("add");
+                  events.add(limit, serverId);
+                } else if (guild.eventLimit > limit || limit === 0) {
+                  log("delete");
+                  await events.deleteLimit(limit, serverId);
+                }
+              }
+            })
+            .finally(() => {
+              API.guild.addEventLimit({ guildId: serverId, limit: limit });
+            });
+          await this.interaction?.reply({ content: `Updated the max limit to ${limit} launch event(s)`, ephemeral: true });
         }
       } else {
-        await this.interaction?.reply(`Max limit is 50`);
+        await this.interaction?.reply({ content: `Max limit is 50`, ephemeral: true });
       }
     }
   }

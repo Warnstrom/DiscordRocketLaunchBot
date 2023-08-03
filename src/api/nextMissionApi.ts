@@ -39,7 +39,6 @@ export const mission = {
       )
     ).results;
     if (result.length) {
-      log(result[0]);
       return result[0];
     } else {
       throw new Error("No upcoming launches");

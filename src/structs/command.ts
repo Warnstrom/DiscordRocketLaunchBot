@@ -1,4 +1,11 @@
-import { CacheType, CommandInteraction, CommandInteractionOptionResolver } from "discord.js";
+import { APIEmbed } from "discord-api-types";
+import {
+  CacheType,
+  CommandInteraction,
+  CommandInteractionOptionResolver,
+  GuildChannel,
+  TextChannel,
+} from "discord.js";
 export default class Command {
   readonly name: string | undefined;
   readonly description: string | undefined;
@@ -10,6 +17,7 @@ export default class Command {
   async execute(
     interaction: CommandInteraction | null,
     options: Omit<CommandInteractionOptionResolver<CacheType>, "getMessage" | "getFocused"> | null,
+    channel?: string | TextChannel | GuildChannel
   ) {}
-  update?(customButtonId?: String): void
+  update?(customButtonId?: String): void;
 }

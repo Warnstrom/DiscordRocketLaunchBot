@@ -1,5 +1,5 @@
 import settings from "./settings";
-import { ButtonInteraction, Client, CommandInteraction, GuildScheduledEventEditOptions, Intents, Interaction } from "discord.js";
+import { ButtonInteraction, Client, CommandInteraction, Guild, Intents, Interaction, TextChannel } from "discord.js";
 import Command from "./structs/command";
 import * as commandList from "./commands/index";
 import { REST } from "@discordjs/rest";
@@ -12,7 +12,6 @@ import { events } from "./utils/event";
 import { log } from "./utils/logger";
 import instadate from "instadate";
 const cron = require("node-cron");
-
 const rest = new REST({ version: "10" }).setToken(settings.CLIENT_TOKEN);
 const commands: { [key: string]: typeof Command } = {
   next: commandList.Next,
@@ -23,6 +22,8 @@ const commands: { [key: string]: typeof Command } = {
   seteventrole: commandList.SetEventRole,
   seteventlimit: commandList.SetEventLimit,
 };
+
+const launchThreads = new Map<string, { threadName: string | null; threadId: string | null }>();
 class Bot extends Client {
   constructor() {
     super({
@@ -31,36 +32,55 @@ class Bot extends Client {
     });
     connectToDatabase();
     cron.schedule("*/5 * * * *", async () => {
-      const result = await API.launch.find();
-      const upcomingLaunch = mission.limit("", 50);
-      if (result?.length === 0) {
-        // if the database has no launches, fill it
-        upcomingLaunch.then(async (value) => {
-          await API.launch.add(value);
-        });
-      } else {
-        if (result) {
-          for (const launches of result) {
-            await API.launch.delete(launches.id);
-            log("Deleted launch", launches.id);
-          }
-          upcomingLaunch.then(async (value) => {
-            await API.launch.add(value);
-            log("Added launches", value.length);
-          });
-        }
-      }
-      const guilds = client.guilds.cache.map((guild) => guild);
+      this.updateLaunches();
+      //this.updateEventData();
+      const guilds: Guild[] = client.guilds.cache.map((guild) => guild);
       guilds.map(async (guild) => {
-        guild.scheduledEvents.cache.map((event) => {
-          log(event.scheduledStartAt, new Date(), instadate.differenceInHours(new Date(), event.scheduledStartAt));
-          const anHourTimeDifference = instadate.differenceInMinutes(new Date(), event.scheduledStartAt);
-          if (anHourTimeDifference <= 60 && anHourTimeDifference >= 0) {
-            API.guild.findGuild(event.guildId).then((guild) => {
-              if (guild) {
-                const channel = guild.announceChannel;
-                const role = guild.announceRole;
-                log(channel, role);
+        let t: Guild = guild;
+        const events = await guild.scheduledEvents.fetch();
+        events.map((event) => {
+          log(
+            event,
+            new Date(),
+            `hours: ${instadate.differenceInHours(new Date(), event.scheduledStartAt)}`,
+            `minutes: ${instadate.differenceInMinutes(new Date(), event.scheduledStartAt)}`
+          );
+
+          const timeDifferenceInMinutes = instadate.differenceInMinutes(new Date(), event.scheduledStartAt);
+          const timeDifferenceInHours = instadate.differenceInHours(new Date(), event.scheduledStartAt);
+          const sameDayCheck = instadate.differenceInMinutes(new Date(), event.scheduledStartAt);
+          if (timeDifferenceInHours <= 24 && timeDifferenceInHours >= 0) {
+            API.guild.findOne(event.guildId).then(async (guild) => {
+              if (guild && event.creator?.username) {
+                if (timeDifferenceInHours <= 1 && timeDifferenceInHours >= 0) {
+                  const thread = launchThreads.get(event.creator.username);
+                  if (thread?.threadId) {
+                    const activeThread = (await t.channels.fetchActiveThreads()).threads.get(thread?.threadId);
+                    activeThread?.send("");
+                  }
+                } else {
+                  //const launchDate: number = Math.floor(new Date(event.scheduledStartAt).getTime() / 1000);
+                  const channel: string = guild.announceChannel;
+                  const role: string = guild.announceRole;
+                  const textChannel: TextChannel = t.channels.cache.get(channel) as TextChannel;
+                  if (!(launchThreads.get(event.creator.username)?.threadName === event.name)) {
+                    let threadId: string | null = null;
+                    textChannel.send(`${role}`);
+                    new commands["next"]().execute(null, null, channel);
+                    (t.channels.cache.get(channel) as TextChannel).threads
+                      .create({
+                        name: event.name,
+                        autoArchiveDuration: 1440,
+                        reason: event.creator.username,
+                      })
+                      .then((thread) => {
+                        threadId = thread.id;
+                      });
+                    launchThreads.set(event.creator.username, { threadName: event.name, threadId: threadId });
+                  } else {
+                    log(event.name, "thread exists");
+                  }
+                }
               }
             });
           }
@@ -71,10 +91,10 @@ class Bot extends Client {
   public start(): void {
     super.login(settings.CLIENT_TOKEN);
     super.on("guildCreate", async (guild) => {
-      await API.guild.insertMany({ guildId: guild.id, announceChannel: null, announceRole: null, eventLimit: 0 });
+      await API.guild.insert({ guildId: guild.id, announceChannel: null, announceRole: null, eventLimit: 0 });
     });
     super.on("guildDelete", async (guild) => {
-      await API.guild.deleteOne(guild);
+      await API.guild.delete(guild);
     });
     super.on("ready", async (client) => {
       if (client.isReady()) {
@@ -116,12 +136,24 @@ class Bot extends Client {
     });
   }
 
-  private async fillDatabase() {
-    const result = await API.launch.find();
-    if (!result || result?.length === 0) {
-      mission.limit("", 50).then(async (value) => {
-        await API.launch.add(value);
+  //Update launches in database with newer data
+  private async updateLaunches() {
+    const result: any[] | undefined = await API.launch.find();
+    const upcomingLaunch: Promise<NextType[]> = mission.limit("", 50);
+    if (result?.length === 0) {
+      // if the database has no launches, fill it
+      upcomingLaunch.then(async (value) => {
+        API.launch.insert(value);
       });
+    } else {
+      if (result) {
+        result.map((launch) => {
+          API.launch.delete(launch.id);
+        });
+        upcomingLaunch.then(async (value) => {
+          API.launch.insert(value);
+        });
+      }
     }
   }
 

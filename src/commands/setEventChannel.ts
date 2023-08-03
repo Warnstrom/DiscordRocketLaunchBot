@@ -44,9 +44,9 @@ export class SetEventChannel implements Command {
       }
       if (checkedChannelId) {
         API.guild.addEventChannel({ guildId: serverId, eventChannelId: channelId });
-        await this.interaction?.reply(`Added ${channel} as a launch event channel`);
+        await this.interaction?.reply({ content: `Added ${channel} as a launch event channel`, ephemeral: true });
       } else {
-        await this.interaction?.reply(`Found no channel called: ${channel}`);
+        await this.interaction?.reply({ content: `Found no channel called: ${channel}`, ephemeral: true });
       }
     }
   }

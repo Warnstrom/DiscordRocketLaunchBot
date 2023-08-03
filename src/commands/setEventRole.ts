@@ -3,7 +3,6 @@ import client from "..";
 import Command from "../structs/command";
 import { API } from "../utils/database";
 import { log } from "../utils/logger";
-
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
 export class SetEventRole implements Command {
@@ -41,13 +40,12 @@ export class SetEventRole implements Command {
       if (serverId) {
         const guild = client.guilds.cache.get(serverId?.toString());
         checkedRoleId = guild?.roles.cache.get(role.toString().slice(3, 21));
-        log(checkedRoleId)
       }
       if (checkedRoleId) {
         API.guild.addEventRole({ guildId: serverId, eventRoleId: role });
-        await this.interaction.reply(`Added ${role} as an event role`);
+        await this.interaction.reply({ content: `Added ${role} as an event role`, ephemeral: true });
       } else {
-        await this.interaction.reply(`Found no role called: ${role}`);
+        await this.interaction.reply({ content: `Found no role called: ${role}`, ephemeral: true });
       }
     }
   }

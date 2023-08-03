@@ -1,5 +1,8 @@
 import { Settings } from "./interfaces/settings";
-
+/*
+  Don't change the naming of Settings properties
+  Only the values should be changed if you're using an API or Database
+*/
 const settings: Settings = {
   GUILD_ID: "YOUR GUILD ID",
   CLIENT_ID: "YOUR CLIENT ID",

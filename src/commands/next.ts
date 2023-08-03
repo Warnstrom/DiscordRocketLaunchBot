@@ -1,18 +1,14 @@
-import {
-  CacheType,
-  CommandInteraction,
-  CommandInteractionOptionResolver,
-  MessageEmbed,
-} from "discord.js";
+const { CacheType, CommandInteraction, CommandInteractionOptionResolver, GuildChannel, MessageEmbed, TextChannel } = require("discord.js");
 import Command from "../structs/command";
 import { mission } from "../api/nextMissionApi";
 import { NextType } from "../interfaces/next";
 import { helpers } from "../utils/helpers";
 import { log } from "../utils/logger";
+import client from "..";
 const { SlashCommandBuilder } = require("@discordjs/builders");
 
 export class Next implements Command {
-  private interaction: CommandInteraction | undefined;
+  private interaction: typeof CommandInteraction | undefined;
   readonly name: string = "next";
   readonly option: boolean = true;
   readonly description: string = "Replies with upcoming launch";
@@ -20,31 +16,35 @@ export class Next implements Command {
   readonly agencyDescriptionOption: string = "Enter an agency";
   readonly disabled: boolean = false;
   async execute(
-    interaction: CommandInteraction,
-    options: Omit<CommandInteractionOptionResolver, "getMessage" | "getFocused">
-  ): Promise<void> {
+    interaction: typeof CommandInteraction,
+    options: Omit<typeof CommandInteractionOptionResolver, "getMessage" | "getFocused">,
+    channel: string
+  ): Promise<void | typeof MessageEmbed | undefined> {
     this.interaction = interaction;
-    const agency: string | null = options.getString("agency");
+    let agency: string | null = null;
+    if (!channel) {
+      agency = options.getString("agency");
+    }
     try {
       const value = await mission.next(agency);
-      this.sendEmbed(value);
+      this.sendEmbed(value, channel);
     } catch (error) {
       console.error(error);
     }
   }
 
   slashCommand() {
-    return new SlashCommandBuilder()
+    const slashCommand = new SlashCommandBuilder()
       .setName(this.name)
       .setDescription(this.description)
-      .addStringOption((option: any) =>
-        option.setName(this.agencyOption).setDescription(this.agencyDescriptionOption)
-      );
+      .addStringOption((option: any) => option.setName(this.agencyOption).setDescription(this.agencyDescriptionOption));
+      return slashCommand;
   }
 
-  private async sendEmbed(data: NextType) {
+  private async sendEmbed(data: NextType, channel: string): Promise<void | typeof MessageEmbed | undefined> {
+    const textChannel = client.channels.cache.get(channel) as typeof TextChannel;
     const launchDate: number = Math.floor(new Date(data.net).getTime() / 1000);
-    const embed: MessageEmbed = new MessageEmbed()
+    const embed: typeof MessageEmbed = new MessageEmbed()
       .setColor(helpers.getColor(data.status?.abbrev))
       .setThumbnail(data.launch_service_provider?.info_url ? data.launch_service_provider?.info_url : helpers.imageUrl)
       .setTitle(data.name || "")
@@ -78,15 +78,18 @@ export class Next implements Command {
         {
           name: "Launch status",
           value: data.status?.name || "",
-        }
-        ,
+        },
         {
           name: "Live stream",
-          value: data.webcast_live ? data.vidURLs[0].url : "No stream yet",
+          value: data.webcast_live || data.vidURLs.length != 0 ? data.vidURLs[0].url : "No stream yet",
         }
       )
       .setImage(data.image || "")
       .setFooter({ text: data.pad?.location.name || "" });
-    this.interaction?.reply({ embeds: [embed] });
+    if (!channel) {
+      this.interaction?.reply({ embeds: [embed] });
+    } else {
+      textChannel.send({ embeds: [embed] });
+    }
   }
 }
